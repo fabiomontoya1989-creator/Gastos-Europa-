@@ -259,7 +259,8 @@ body{
         <div class="route"><span>Presupuesto del viaje</span><span id="passDates">—</span></div>
         <div class="amounts">
           <div>
-            <div class="big num" id="passGastado">€0</div>
+            <div class="big num" id="passGastado">$0</div>
+            <div class="num" id="passGastadoEUR" style="font-size:13px; opacity:.75; margin-top:2px;">€0</div>
             <div class="label">Gastado hasta hoy</div>
           </div>
           <div class="ring-wrap">
@@ -271,9 +272,9 @@ body{
           </div>
         </div>
         <div class="stub-row">
-          <div class="stub"><div class="v num" id="stubPresupuesto">€0</div><div class="l">Presupuesto</div></div>
-          <div class="stub"><div class="v num" id="stubDisponible">€0</div><div class="l">Disponible</div></div>
-          <div class="stub"><div class="v num" id="stubPromedio">€0</div><div class="l">Prom. / día</div></div>
+          <div class="stub"><div class="v num" id="stubPresupuesto">$0</div><div class="l">Presupuesto</div></div>
+          <div class="stub"><div class="v num" id="stubDisponible">$0</div><div class="l">Disponible</div></div>
+          <div class="stub"><div class="v num" id="stubPromedio">$0</div><div class="l">Prom. / día</div></div>
         </div>
       </div>
     </div>
@@ -353,7 +354,7 @@ body{
     <div class="section" style="padding-top:20px;">
       <h2>Presupuesto y respaldo</h2>
       <div class="field">
-        <label>Presupuesto total (EUR)</label>
+        <label>Presupuesto total (COP)</label>
         <input type="number" id="cfg_presupuesto" placeholder="0">
       </div>
       <div class="field">
@@ -576,21 +577,23 @@ function guardarGasto(){
 /* ================= RENDER: DASHBOARD ================= */
 function renderDashboard(){
   const cfg = state.config;
-  const totalGastado = state.gastos.reduce((s,g)=>s+(parseFloat(g.ValorEUR)||0),0);
-  const presupuesto = parseFloat(cfg.presupuesto)||0;
-  const disponible = presupuesto - totalGastado;
-  const pct = presupuesto>0 ? Math.min(100, Math.round((totalGastado/presupuesto)*100)) : 0;
+  const totalGastadoCOP = state.gastos.reduce((s,g)=>s+(parseFloat(g.ValorCOP)||0),0);
+  const totalGastadoEUR = state.gastos.reduce((s,g)=>s+(parseFloat(g.ValorEUR)||0),0);
+  const presupuestoCOP = parseFloat(cfg.presupuesto)||0;
+  const disponibleCOP = presupuestoCOP - totalGastadoCOP;
+  const pct = presupuestoCOP>0 ? Math.min(100, Math.round((totalGastadoCOP/presupuestoCOP)*100)) : 0;
 
-  let promedio = 0;
+  let promedioCOP = 0;
   if(cfg.inicio){
     const dias = Math.max(1, Math.ceil((new Date() - new Date(cfg.inicio))/86400000)+1);
-    promedio = totalGastado/dias;
+    promedioCOP = totalGastadoCOP/dias;
   }
 
-  document.getElementById('passGastado').textContent = fmtEUR(totalGastado);
-  document.getElementById('stubPresupuesto').textContent = fmtEUR(presupuesto);
-  document.getElementById('stubDisponible').textContent = fmtEUR(disponible);
-  document.getElementById('stubPromedio').textContent = fmtEUR(promedio);
+  document.getElementById('passGastado').textContent = fmtCOP(totalGastadoCOP);
+  document.getElementById('passGastadoEUR').textContent = '≈ ' + fmtEUR(totalGastadoEUR);
+  document.getElementById('stubPresupuesto').textContent = fmtCOP(presupuestoCOP);
+  document.getElementById('stubDisponible').textContent = fmtCOP(disponibleCOP);
+  document.getElementById('stubPromedio').textContent = fmtCOP(promedioCOP);
   document.getElementById('ringPct').textContent = pct+'%';
   const circumference = 2*Math.PI*27;
   const offset = circumference - (pct/100)*circumference;
@@ -606,6 +609,7 @@ function renderDashboard(){
   renderCharts();
   renderRecent();
 }
+function fmtCOP(v){ return '$'+Math.round(v).toLocaleString('es-CO'); }
 function fmtEUR(v){ return '€'+(Math.round(v*100)/100).toLocaleString('es-ES'); }
 function fmtDateShort(d){ if(!d) return ''; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
 
@@ -616,8 +620,8 @@ function renderCharts(){
   const byCat = {};
   const byCity = {};
   state.gastos.forEach(g=>{
-    byCat[g.Categoria] = (byCat[g.Categoria]||0) + (parseFloat(g.ValorEUR)||0);
-    byCity[g.Ciudad] = (byCity[g.Ciudad]||0) + (parseFloat(g.ValorEUR)||0);
+    byCat[g.Categoria] = (byCat[g.Categoria]||0) + (parseFloat(g.ValorCOP)||0);
+    byCity[g.Ciudad] = (byCity[g.Ciudad]||0) + (parseFloat(g.ValorCOP)||0);
   });
   const palette = ['#3F7A70','#C99A44','#8B8577','#C1553D','#2C574F','#41546A','#B7A16C','#6E9C8F'];
 
@@ -657,7 +661,7 @@ function renderList(wrap, items){
         <div class="desc">${g.Descripcion}</div>
         <div class="sub">${g.Ciudad} · ${fmtDateShort(g.Fecha)} · ${g.MetodoPago}</div>
       </div>
-      <div class="amt">€${(parseFloat(g.ValorEUR)||0).toFixed(2)}</div>
+      <div class="amt">${fmtCOP(parseFloat(g.ValorCOP)||0)}</div>
       <button class="del" data-action="borrarGasto" data-value="${g.ID_Gasto}">✕</button>
     </div>
   `).join('');
