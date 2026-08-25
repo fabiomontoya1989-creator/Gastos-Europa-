@@ -609,6 +609,9 @@ function fmtEUR(v){ return '€'+(Math.round(v*100)/100).toLocaleString('es-ES')
 function fmtDateShort(d){ if(!d) return ''; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
 
 function renderCharts(){
+  if(typeof Chart === 'undefined'){
+    return; // Chart.js no cargó (sin internet / bloqueado); el resto de la app sigue funcionando
+  }
   const byCat = {};
   const byCity = {};
   state.gastos.forEach(g=>{
@@ -617,18 +620,20 @@ function renderCharts(){
   });
   const palette = ['#3F7A70','#C99A44','#8B8577','#C1553D','#2C574F','#41546A','#B7A16C','#6E9C8F'];
 
-  if(charts.cat) charts.cat.destroy();
-  charts.cat = new Chart(document.getElementById('chartCategoria'), {
-    type:'bar',
-    data:{ labels:Object.keys(byCat), datasets:[{ data:Object.values(byCat), backgroundColor:palette, borderRadius:6 }]},
-    options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, ticks:{font:{size:10}}}, x:{ticks:{font:{size:9.5}}} } }
-  });
-  if(charts.city) charts.city.destroy();
-  charts.city = new Chart(document.getElementById('chartCiudad'), {
-    type:'doughnut',
-    data:{ labels:Object.keys(byCity), datasets:[{ data:Object.values(byCity), backgroundColor:palette }]},
-    options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:10}}}} }
-  });
+  try{
+    if(charts.cat) charts.cat.destroy();
+    charts.cat = new Chart(document.getElementById('chartCategoria'), {
+      type:'bar',
+      data:{ labels:Object.keys(byCat), datasets:[{ data:Object.values(byCat), backgroundColor:palette, borderRadius:6 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, ticks:{font:{size:10}}}, x:{ticks:{font:{size:9.5}}} } }
+    });
+    if(charts.city) charts.city.destroy();
+    charts.city = new Chart(document.getElementById('chartCiudad'), {
+      type:'doughnut',
+      data:{ labels:Object.keys(byCity), datasets:[{ data:Object.values(byCity), backgroundColor:palette }]},
+      options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:10}}}} }
+    });
+  }catch(e){}
 }
 
 function renderRecent(){
