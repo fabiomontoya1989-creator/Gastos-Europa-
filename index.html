@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos EU26">
+<title>Control de Gastos — Europa 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1C2B3A;
+  --ink-soft:#41546A;
+  --parchment:#F7F2E9;
+  --parchment-dim:#EFE8DA;
+  --teal:#3F7A70;
+  --teal-deep:#2C574F;
+  --gold:#C99A44;
+  --coral:#C1553D;
+  --stone:#8B8577;
+  --line: rgba(28,43,58,0.12);
+  --radius: 18px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--ink);}
+body{
+  font-family:'Inter',sans-serif;
+  color:var(--ink);
+  overscroll-behavior-y:none;
+  min-height:100vh;
+}
+.app{
+  max-width:480px;
+  margin:0 auto;
+  background:var(--parchment);
+  min-height:100vh;
+  position:relative;
+  padding-bottom:calc(74px + var(--safe-bottom));
+}
+.num{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+.display{font-family:'Fraunces',serif;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  background:var(--ink);
+  color:var(--parchment);
+  padding:18px 20px 22px;
+  position:sticky; top:0; z-index:20;
+  border-bottom-left-radius:22px;
+  border-bottom-right-radius:22px;
+}
+.topbar .eyebrow{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gold); font-weight:600; margin-bottom:4px;
+}
+.topbar h1{
+  font-family:'Fraunces',serif; font-weight:600; font-size:24px; margin:0;
+  letter-spacing:-0.01em;
+}
+.topbar .sync-pill{
+  position:absolute; top:18px; right:20px;
+  font-size:10px; padding:5px 10px; border-radius:20px;
+  background:rgba(247,242,233,0.12); color:var(--parchment);
+  display:flex; align-items:center; gap:6px; cursor:pointer;
+  border:1px solid rgba(247,242,233,0.18);
+}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--stone);}
+.sync-pill.online .sync-dot{background:#7FBF9E;}
+.sync-pill.pending .sync-dot{background:var(--gold);}
+.sync-pill.error .sync-dot{background:var(--coral);}
+
+/* ---------- BOARDING PASS CARD ---------- */
+.pass-wrap{padding:18px 20px 4px;}
+.pass{
+  background:var(--teal);
+  color:var(--parchment);
+  border-radius:var(--radius);
+  padding:20px 20px 16px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 14px 30px -12px rgba(28,43,58,0.45);
+}
+.pass::before{
+  content:"";
+  position:absolute; left:-10px; top:50%; width:20px; height:20px;
+  background:var(--parchment); border-radius:50%; transform:translateY(-50%);
+}
+.pass::after{
+  content:"";
+  position:absolute; right:-10px; top:50%; width:20px; height:20px;
+  background:var(--parchment); border-radius:50%; transform:translateY(-50%);
+}
+.pass .route{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.75;
+  margin-bottom:10px;
+}
+.pass .amounts{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  border-bottom:1px dashed rgba(247,242,233,0.35);
+  padding-bottom:14px; margin-bottom:12px;
+}
+.pass .amounts .big{
+  font-family:'Fraunces',serif; font-size:34px; font-weight:600; line-height:1;
+}
+.pass .amounts .label{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; opacity:.75; margin-top:6px;}
+.pass .ring-wrap{width:64px;height:64px; position:relative;}
+.pass .ring-wrap svg{transform:rotate(-90deg);}
+.pass .ring-pct{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;
+}
+.pass .stub-row{display:flex; gap:0;}
+.pass .stub{flex:1; text-align:center;}
+.pass .stub .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:600;}
+.pass .stub .l{font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; opacity:.7; margin-top:2px;}
+
+/* ---------- SECTIONS ---------- */
+.section{padding:20px 20px 4px;}
+.section h2{
+  font-family:'Fraunces',serif; font-size:16px; font-weight:600; margin:0 0 12px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.section h2 .see-all{font-size:11px; font-family:'Inter',sans-serif; font-weight:600; color:var(--teal-deep); text-transform:none;}
+
+.chart-card{
+  background:#fff; border-radius:var(--radius); padding:16px;
+  border:1px solid var(--line); margin-bottom:16px;
+}
+.chart-card h3{margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--stone); font-weight:600;}
+.chart-card canvas{max-height:180px;}
+
+/* expense list */
+.gasto-item{
+  display:flex; align-items:center; gap:12px;
+  background:#fff; border:1px solid var(--line); border-radius:14px;
+  padding:12px 14px; margin-bottom:10px;
+}
+.gasto-item .stamp{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--parchment-dim); display:flex; align-items:center; justify-content:center;
+  font-size:17px; flex-shrink:0; border:1px dashed var(--stone);
+}
+.gasto-item .meta{flex:1; min-width:0;}
+.gasto-item .meta .desc{font-size:13.5px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.gasto-item .meta .sub{font-size:11.5px; color:var(--stone); margin-top:1px;}
+.gasto-item .amt{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:var(--ink); flex-shrink:0;}
+.gasto-item .del{
+  width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--coral);
+  font-size:15px; flex-shrink:0; cursor:pointer;
+}
+.empty{
+  text-align:center; padding:36px 20px; color:var(--stone);
+}
+.empty .glyph{font-size:30px; margin-bottom:8px;}
+.empty p{font-size:13px; margin:0; line-height:1.5;}
+
+/* ---------- FORM ---------- */
+.field{margin-bottom:14px;}
+.field label{
+  display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--stone); font-weight:600; margin-bottom:6px;
+}
+.field input, .field select, .field textarea{
+  width:100%; padding:12px 13px; border-radius:12px; border:1px solid var(--line);
+  background:#fff; font-family:'Inter',sans-serif; font-size:15px; color:var(--ink);
+  appearance:none; -webkit-appearance:none;
+}
+.field textarea{resize:none; min-height:56px;}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.chip-group{display:flex; flex-wrap:wrap; gap:8px;}
+.chip{
+  padding:9px 14px; border-radius:20px; border:1px solid var(--line); background:#fff;
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer;
+  display:flex; align-items:center; gap:6px;
+}
+.chip.active{background:var(--ink); color:var(--parchment); border-color:var(--ink);}
+.btn{
+  width:100%; padding:15px; border-radius:14px; border:none; background:var(--teal);
+  color:var(--parchment); font-weight:700; font-size:14.5px; cursor:pointer; letter-spacing:.01em;
+}
+.btn:active{background:var(--teal-deep);}
+.btn.secondary{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+.btn.ghost{background:transparent; color:var(--coral); font-weight:600; font-size:13px; padding:10px;}
+
+/* ---------- NAV ---------- */
+.tabbar{
+  position:fixed; bottom:0; left:0; right:0;
+  max-width:480px; margin:0 auto;
+  background:rgba(247,242,233,0.92); backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);
+  display:flex; padding:10px 8px calc(10px + var(--safe-bottom));
+  z-index:30;
+}
+.tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:none; border:none; color:var(--stone); font-family:'Inter',sans-serif;
+  font-size:10.5px; font-weight:600; padding:6px 0; cursor:pointer;
+}
+.tab .ic{font-size:19px; line-height:1;}
+.tab.active{color:var(--teal-deep);}
+.tab.fab{position:relative; top:-16px;}
+.tab.fab .ic{
+  width:50px;height:50px;border-radius:50%;background:var(--ink); color:var(--parchment);
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+  box-shadow:0 10px 20px -8px rgba(28,43,58,0.55);
+}
+
+.view{display:none;}
+.view.active{display:block;}
+
+/* config list rows */
+.list-row{
+  display:flex; align-items:center; justify-content:space-between;
+  background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:11px 13px; margin-bottom:8px; font-size:13.5px;
+}
+.list-row button{border:none;background:none;color:var(--coral); font-size:13px; cursor:pointer;}
+.hint{font-size:11.5px; color:var(--stone); line-height:1.5; margin:6px 0 0;}
+.divider{height:1px; background:var(--line); margin:22px 0;}
+.modal-bg{position:fixed; inset:0; background:rgba(28,43,58,0.5); display:none; align-items:flex-end; z-index:50;}
+.modal-bg.active{display:flex;}
+.modal{
+  background:var(--parchment); width:100%; max-width:480px; margin:0 auto;
+  border-radius:22px 22px 0 0; padding:22px 20px calc(22px + var(--safe-bottom));
+  max-height:85vh; overflow-y:auto;
+}
+.modal-handle{width:36px;height:4px;background:var(--line); border-radius:4px; margin:0 auto 16px;}
+.toast{
+  position:fixed; bottom:calc(90px + var(--safe-bottom)); left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--parchment); padding:11px 18px; border-radius:30px;
+  font-size:13px; z-index:60; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+  white-space:nowrap;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="topbar">
+    <div class="eyebrow" id="cityLine">Europa · 2026</div>
+    <h1>Control de Gastos</h1>
+    <div class="sync-pill" id="syncPill" data-action="sync">
+      <span class="sync-dot"></span><span id="syncLabel">Sin config.</span>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div class="view active" id="view-dashboard">
+    <div class="pass-wrap">
+      <div class="pass">
+        <div class="route"><span>Presupuesto del viaje</span><span id="passDates">—</span></div>
+        <div class="amounts">
+          <div>
+            <div class="big num" id="passGastado">€0</div>
+            <div class="label">Gastado hasta hoy</div>
+          </div>
+          <div class="ring-wrap">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" stroke="rgba(247,242,233,0.25)" stroke-width="7" fill="none"/>
+              <circle id="ringProgress" cx="32" cy="32" r="27" stroke="#F7F2E9" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="170" stroke-dashoffset="170"/>
+            </svg>
+            <div class="ring-pct" id="ringPct">0%</div>
+          </div>
+        </div>
+        <div class="stub-row">
+          <div class="stub"><div class="v num" id="stubPresupuesto">€0</div><div class="l">Presupuesto</div></div>
+          <div class="stub"><div class="v num" id="stubDisponible">€0</div><div class="l">Disponible</div></div>
+          <div class="stub"><div class="v num" id="stubPromedio">€0</div><div class="l">Prom. / día</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="chart-card">
+        <h3>Gasto por categoría</h3>
+        <canvas id="chartCategoria"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Gasto por ciudad</h3>
+        <canvas id="chartCiudad"></canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Gastos recientes <span class="see-all" data-action="goto" data-value="lista">Ver todos →</span></h2>
+      <div id="recentList"></div>
+    </div>
+  </div>
+
+  <!-- ============ REGISTRAR ============ -->
+  <div class="view" id="view-registrar">
+    <div class="section" style="padding-top:20px;">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="f_fecha">
+      </div>
+      <div class="field">
+        <label>Ciudad</label>
+        <select id="f_ciudad"></select>
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <div class="chip-group" id="f_categorias"></div>
+      </div>
+      <div class="field">
+        <label>Subcategoría</label>
+        <div class="chip-group" id="f_subcategorias"></div>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <input type="text" id="f_desc" placeholder="Ej: Cena en Trastevere">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Valor</label>
+          <input type="number" inputmode="decimal" id="f_valor" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Moneda</label>
+          <select id="f_moneda"><option>EUR</option><option>USD</option><option>COP</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Método de pago</label>
+        <div class="chip-group" id="f_metodos"></div>
+      </div>
+      <div class="field">
+        <label>Observaciones (opcional)</label>
+        <textarea id="f_obs" placeholder="Notas..."></textarea>
+      </div>
+      <button class="btn" data-action="guardarGasto">Registrar gasto</button>
+    </div>
+  </div>
+
+  <!-- ============ LISTA ============ -->
+  <div class="view" id="view-lista">
+    <div class="section" style="padding-top:20px;">
+      <h2>Todos los gastos</h2>
+      <div id="fullList"></div>
+    </div>
+  </div>
+
+  <!-- ============ AJUSTES ============ -->
+  <div class="view" id="view-ajustes">
+    <div class="section" style="padding-top:20px;">
+      <h2>Presupuesto y respaldo</h2>
+      <div class="field">
+        <label>Presupuesto total (EUR)</label>
+        <input type="number" id="cfg_presupuesto" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Fecha inicio del viaje</label>
+        <input type="date" id="cfg_inicio">
+      </div>
+      <div class="field">
+        <label>Fecha fin del viaje</label>
+        <input type="date" id="cfg_fin">
+      </div>
+      <div class="field">
+        <label>URL del backend (Apps Script)</label>
+        <input type="text" id="cfg_url" placeholder="https://script.google.com/macros/s/.../exec">
+        <p class="hint">Ya viene configurada por defecto. Solo cámbiala si vuelves a implementar el Apps Script y te da una URL nueva.</p>
+      </div>
+      <button class="btn" data-action="guardarConfig">Guardar ajustes</button>
+
+      <div class="divider"></div>
+      <h2>Tasas de cambio a Peso Colombiano</h2>
+      <div class="row2">
+        <div class="field"><label>1 EUR =</label><input type="number" step="1" id="cfg_eurcop" placeholder="COP"></div>
+        <div class="field"><label>1 USD =</label><input type="number" step="1" id="cfg_usdcop" placeholder="COP"></div>
+      </div>
+      <p class="hint" id="ratesUpdatedHint">Aún no se han actualizado.</p>
+      <button class="btn secondary" data-action="guardarConfig">Guardar tasas manualmente</button>
+      <button class="btn ghost" data-action="actualizarTasas">🔄 Actualizar tasas del día ahora</button>
+
+      <div class="divider"></div>
+      <h2>Ciudades del viaje</h2>
+      <div id="cityListCfg"></div>
+      <div class="row2">
+        <input type="text" id="new_ciudad" placeholder="Nombre de ciudad" style="padding:12px 13px;border-radius:12px;border:1px solid var(--line);font-size:14px;">
+        <button class="btn secondary" data-action="agregarCiudad">+ Añadir</button>
+      </div>
+
+      <div class="divider"></div>
+      <button class="btn ghost" data-action="forzarPull">↓ Descargar datos desde Sheets</button>
+    </div>
+  </div>
+
+  <!-- ============ TAB BAR ============ -->
+  <div class="tabbar">
+    <button class="tab active" data-view="dashboard" data-action="goto" data-value="dashboard">
+      <span class="ic">🧭</span>Resumen
+    </button>
+    <button class="tab" data-view="lista" data-action="goto" data-value="lista">
+      <span class="ic">🗂️</span>Gastos
+    </button>
+    <button class="tab fab" data-action="goto" data-value="registrar">
+      <span class="ic">+</span>
+    </button>
+    <button class="tab" data-view="ajustes" data-action="goto" data-value="ajustes">
+      <span class="ic">⚙️</span>Ajustes
+    </button>
+    <button class="tab" data-action="sync">
+      <span class="ic">☁️</span>Sync
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+window.addEventListener('error', function(e){
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C1553D;color:#fff;padding:14px;font-size:12px;z-index:9999;font-family:monospace;';
+  box.textContent = 'ERROR JS: ' + e.message + ' (línea ' + e.lineno + ')';
+  document.body.appendChild(box);
+});
+
+
+window.addEventListener('load', function(){
+
+/* ================= DATA MODEL ================= */
+const CATS = {
+  "Transporte": ["Vuelo","Tren","Bus","Metro","Tranvía","Taxi","Uber","Otro transporte"],
+  "Alojamiento": ["Hotel","Apartamento","Hostel","Otros"],
+  "Alimentación": ["Desayuno","Almuerzo","Cena","Café","Snacks","Bebidas"],
+  "Turismo": ["Entrada","Museo","Tour","Atracción","Espectáculo"],
+  "Compras": ["Ropa","Souvenirs","Otros"],
+  "Comunicaciones": ["SIM","eSIM","Internet","Llamadas"],
+  "Finanzas": ["Comisión","Retiro","Cambio de moneda"],
+  "Otros": ["Seguro","Equipaje","Imprevistos","Otros"]
+};
+const CAT_ICON = {
+  "Transporte":"🚆","Alojamiento":"🏨","Alimentación":"🍝","Turismo":"🎟️",
+  "Compras":"🛍️","Comunicaciones":"📱","Finanzas":"💳","Otros":"🧳"
+};
+const METODOS = ["Tarjeta crédito","Tarjeta débito","Efectivo EUR","Efectivo USD","Efectivo COP","Transferencia","Otro"];
+
+let state = {
+  gastos: [],
+  ciudades: [],
+  config: { presupuesto:0, inicio:'', fin:'', url:'', eur_cop:0, usd_cop:0 },
+  pending: []
+};
+let formCat = "Transporte";
+let formSub = CATS["Transporte"][0];
+let formMetodo = METODOS[0];
+let charts = {};
+
+/* ================= STORAGE ================= */
+function load(){
+  try{
+    const raw = localStorage.getItem('gastos_eu26_state');
+    if(raw) state = Object.assign(state, JSON.parse(raw));
+  }catch(e){}
+  if(!state.ciudades || state.ciudades.length===0) state.ciudades = ["Madrid","Barcelona","París","Milán","Sorrento","Venecia","Roma","Nápoles","Costa Amalfitana"];
+}
+function save(){
+  localStorage.setItem('gastos_eu26_state', JSON.stringify(state));
+}
+
+/* ================= NAV ================= */
+function goTo(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const t = document.querySelector('.tab[data-view="'+view+'"]');
+  if(t) t.classList.add('active');
+  if(view==='dashboard') renderDashboard();
+  if(view==='lista') renderFullList();
+  if(view==='registrar') renderForm();
+  if(view==='ajustes') renderAjustes();
+}
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* ================= RENDER: FORM ================= */
+function renderForm(){
+  document.getElementById('f_fecha').value = new Date().toISOString().slice(0,10);
+  const citySel = document.getElementById('f_ciudad');
+  citySel.innerHTML = state.ciudades.map(c=>`<option>${c}</option>`).join('');
+
+  const catWrap = document.getElementById('f_categorias');
+  catWrap.innerHTML = Object.keys(CATS).map(c=>
+    `<div class="chip ${c===formCat?'active':''}" data-action="pickCat" data-value="${c}">${CAT_ICON[c]} ${c}</div>`
+  ).join('');
+  renderSubcats();
+
+  const metWrap = document.getElementById('f_metodos');
+  metWrap.innerHTML = METODOS.map(m=>
+    `<div class="chip ${m===formMetodo?'active':''}" data-action="pickMetodo" data-value="${m}">${m}</div>`
+  ).join('');
+}
+function renderSubcats(){
+  const subWrap = document.getElementById('f_subcategorias');
+  const subs = CATS[formCat];
+  if(!subs.includes(formSub)) formSub = subs[0];
+  subWrap.innerHTML = subs.map(s=>
+    `<div class="chip ${s===formSub?'active':''}" data-action="pickSub" data-value="${s}">${s}</div>`
+  ).join('');
+}
+function pickCat(c){ formCat=c; formSub=CATS[c][0]; renderForm(); }
+function pickSub(s){ formSub=s; renderSubcats(); }
+function pickMetodo(m){ formMetodo=m; renderForm(); }
+
+function convertirAEUR(valor, moneda){
+  valor = parseFloat(valor)||0;
+  const eurcop = state.config.eur_cop || 1;
+  const usdcop = state.config.usd_cop || 1;
+  if(moneda==='EUR') return valor;
+  if(moneda==='USD') return valor * (usdcop / eurcop);
+  if(moneda==='COP') return valor / eurcop;
+  return valor;
+}
+function convertirACOP(valor, moneda){
+  valor = parseFloat(valor)||0;
+  if(moneda==='COP') return valor;
+  if(moneda==='EUR') return valor * (state.config.eur_cop||0);
+  if(moneda==='USD') return valor * (state.config.usd_cop||0);
+  return valor;
+}
+
+function guardarGasto(){
+  const valor = parseFloat(document.getElementById('f_valor').value);
+  if(!valor || valor<=0){ toast('Ingresa un valor válido'); return; }
+  const moneda = document.getElementById('f_moneda').value;
+  const desc = document.getElementById('f_desc').value || formSub;
+  const gasto = {
+    ID_Gasto: 'g_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    Fecha: document.getElementById('f_fecha').value,
+    Hora: new Date().toTimeString().slice(0,5),
+    Ciudad: document.getElementById('f_ciudad').value,
+    Pais: '',
+    Categoria: formCat,
+    Subcategoria: formSub,
+    Descripcion: desc,
+    Proveedor: '',
+    Valor: valor,
+    Moneda: moneda,
+    TasaCambio: moneda==='EUR'?(state.config.eur_cop||1):(moneda==='USD'?(state.config.usd_cop||1):1),
+    ValorEUR: convertirAEUR(valor, moneda),
+    ValorCOP: convertirACOP(valor, moneda),
+    MetodoPago: formMetodo,
+    Persona: 'Yo',
+    EstadoPago: 'Pagado',
+    TipoGasto: 'Real',
+    ReservaRelacionada: '',
+    Observaciones: document.getElementById('f_obs').value,
+    FotoRecibo: '',
+    FechaRegistro: new Date().toISOString()
+  };
+  state.gastos.unshift(gasto);
+  state.pending.push({action:'add', data:gasto});
+  save();
+  document.getElementById('f_valor').value='';
+  document.getElementById('f_desc').value='';
+  document.getElementById('f_obs').value='';
+  toast('Gasto registrado ✓');
+  trySync();
+  goTo('dashboard');
+}
+
+/* ================= RENDER: DASHBOARD ================= */
+function renderDashboard(){
+  const cfg = state.config;
+  const totalGastado = state.gastos.reduce((s,g)=>s+(parseFloat(g.ValorEUR)||0),0);
+  const presupuesto = parseFloat(cfg.presupuesto)||0;
+  const disponible = presupuesto - totalGastado;
+  const pct = presupuesto>0 ? Math.min(100, Math.round((totalGastado/presupuesto)*100)) : 0;
+
+  let promedio = 0;
+  if(cfg.inicio){
+    const dias = Math.max(1, Math.ceil((new Date() - new Date(cfg.inicio))/86400000)+1);
+    promedio = totalGastado/dias;
+  }
+
+  document.getElementById('passGastado').textContent = fmtEUR(totalGastado);
+  document.getElementById('stubPresupuesto').textContent = fmtEUR(presupuesto);
+  document.getElementById('stubDisponible').textContent = fmtEUR(disponible);
+  document.getElementById('stubPromedio').textContent = fmtEUR(promedio);
+  document.getElementById('ringPct').textContent = pct+'%';
+  const circumference = 2*Math.PI*27;
+  const offset = circumference - (pct/100)*circumference;
+  const ring = document.getElementById('ringProgress');
+  ring.setAttribute('stroke-dasharray', circumference);
+  ring.setAttribute('stroke-dashoffset', offset);
+  ring.setAttribute('stroke', pct>=100? '#C1553D' : (pct>=80? '#C99A44' : '#F7F2E9'));
+
+  if(cfg.inicio && cfg.fin){
+    document.getElementById('passDates').textContent = fmtDateShort(cfg.inicio)+' – '+fmtDateShort(cfg.fin);
+  }
+
+  renderCharts();
+  renderRecent();
+}
+function fmtEUR(v){ return '€'+(Math.round(v*100)/100).toLocaleString('es-ES'); }
+function fmtDateShort(d){ if(!d) return ''; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
+
+function renderCharts(){
+  const byCat = {};
+  const byCity = {};
+  state.gastos.forEach(g=>{
+    byCat[g.Categoria] = (byCat[g.Categoria]||0) + (parseFloat(g.ValorEUR)||0);
+    byCity[g.Ciudad] = (byCity[g.Ciudad]||0) + (parseFloat(g.ValorEUR)||0);
+  });
+  const palette = ['#3F7A70','#C99A44','#8B8577','#C1553D','#2C574F','#41546A','#B7A16C','#6E9C8F'];
+
+  if(charts.cat) charts.cat.destroy();
+  charts.cat = new Chart(document.getElementById('chartCategoria'), {
+    type:'bar',
+    data:{ labels:Object.keys(byCat), datasets:[{ data:Object.values(byCat), backgroundColor:palette, borderRadius:6 }]},
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, ticks:{font:{size:10}}}, x:{ticks:{font:{size:9.5}}} } }
+  });
+  if(charts.city) charts.city.destroy();
+  charts.city = new Chart(document.getElementById('chartCiudad'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(byCity), datasets:[{ data:Object.values(byCity), backgroundColor:palette }]},
+    options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:10}}}} }
+  });
+}
+
+function renderRecent(){
+  const wrap = document.getElementById('recentList');
+  renderList(wrap, state.gastos.slice(0,5));
+}
+function renderFullList(){
+  const wrap = document.getElementById('fullList');
+  renderList(wrap, state.gastos);
+}
+function renderList(wrap, items){
+  if(items.length===0){
+    wrap.innerHTML = `<div class="empty"><div class="glyph">🧳</div><p>Todavía no hay gastos.<br>Toca + para registrar el primero.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = items.map(g=>`
+    <div class="gasto-item">
+      <div class="stamp">${CAT_ICON[g.Categoria]||'💶'}</div>
+      <div class="meta">
+        <div class="desc">${g.Descripcion}</div>
+        <div class="sub">${g.Ciudad} · ${fmtDateShort(g.Fecha)} · ${g.MetodoPago}</div>
+      </div>
+      <div class="amt">€${(parseFloat(g.ValorEUR)||0).toFixed(2)}</div>
+      <button class="del" data-action="borrarGasto" data-value="${g.ID_Gasto}">✕</button>
+    </div>
+  `).join('');
+}
+function borrarGasto(id){
+  state.gastos = state.gastos.filter(g=>g.ID_Gasto!==id);
+  state.pending.push({action:'delete', id:id});
+  save();
+  trySync();
+  renderDashboard();
+  renderFullList();
+  toast('Gasto eliminado');
+}
+
+/* ================= AJUSTES ================= */
+function renderAjustes(){
+  document.getElementById('cfg_presupuesto').value = state.config.presupuesto || '';
+  document.getElementById('cfg_inicio').value = state.config.inicio || '';
+  document.getElementById('cfg_fin').value = state.config.fin || '';
+  document.getElementById('cfg_url').value = state.config.url || API_URL;
+  document.getElementById('cfg_eurcop').value = state.config.eur_cop || '';
+  document.getElementById('cfg_usdcop').value = state.config.usd_cop || '';
+  renderRatesHint();
+}
+function renderRatesHint(){
+  const hint = document.getElementById('ratesUpdatedHint');
+  if(!hint) return;
+  if(state.config.rates_updated){
+    hint.textContent = 'Actualizado automáticamente: ' + state.config.rates_updated;
+  } else {
+    hint.textContent = 'Aún no se han actualizado automáticamente. Toca el botón de abajo o conéctate a internet.';
+  }
+  const wrap = document.getElementById('cityListCfg');
+  wrap.innerHTML = state.ciudades.map(c=>`
+    <div class="list-row"><span>${c}</span><button data-action="quitarCiudad" data-value="${c}">Quitar</button></div>
+  `).join('');
+}
+function guardarConfig(){
+  state.config.presupuesto = parseFloat(document.getElementById('cfg_presupuesto').value)||0;
+  state.config.inicio = document.getElementById('cfg_inicio').value;
+  state.config.fin = document.getElementById('cfg_fin').value;
+  state.config.url = document.getElementById('cfg_url').value.trim();
+  state.config.eur_cop = parseFloat(document.getElementById('cfg_eurcop').value)||0;
+  state.config.usd_cop = parseFloat(document.getElementById('cfg_usdcop').value)||0;
+  save();
+  updateCityLine();
+  toast('Ajustes guardados');
+  updateSyncPill();
+}
+function agregarCiudad(){
+  const inp = document.getElementById('new_ciudad');
+  const v = inp.value.trim();
+  if(!v) return;
+  if(!state.ciudades.includes(v)) state.ciudades.push(v);
+  inp.value='';
+  save();
+  renderAjustes();
+}
+function quitarCiudad(c){
+  state.ciudades = state.ciudades.filter(x=>x!==c);
+  save();
+  renderAjustes();
+}
+function updateCityLine(){
+  document.getElementById('cityLine').textContent = state.ciudades.slice(0,3).join(' · ') + ' · 2026';
+}
+
+/* ================= SYNC ================= */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyNsByw2snlQda27PE4aMkPOoY-p_FlXkkPJHJ3MhEpsr-BVSVf4yA1X3nECJIPdSTz/exec';
+function apiBase(){
+  return state.config.url || API_URL;
+}
+function updateSyncPill(){
+  const pill = document.getElementById('syncPill');
+  const label = document.getElementById('syncLabel');
+  pill.classList.remove('online','pending','error');
+  if(state.pending.length>0){
+    pill.classList.add('pending');
+    label.textContent = state.pending.length+' por sincronizar';
+  } else {
+    pill.classList.add('online');
+    label.textContent = 'Al día';
+  }
+}
+async function trySync(){
+  updateSyncPill();
+  if(state.pending.length===0) return;
+  const queue = [...state.pending];
+  for(const item of queue){
+    try{
+      const res = await fetch(apiBase(), {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(item)
+      });
+      if(!res.ok) throw new Error('sync failed');
+      state.pending.shift();
+    }catch(e){
+      break;
+    }
+  }
+  save();
+  updateSyncPill();
+}
+function manualSync(){
+  toast('Sincronizando…');
+  trySync().then(()=>toast('Sincronización enviada'));
+}
+async function forzarPull(){
+  try{
+    const res = await fetch(apiBase()+'?data=1');
+    const json = await res.json();
+    if(json.ok && Array.isArray(json.data)){
+      const existingIds = new Set(state.gastos.map(g=>g.ID_Gasto));
+      let added = 0;
+      json.data.forEach(row=>{
+        if(row.ID_Gasto && !existingIds.has(row.ID_Gasto)){
+          state.gastos.push(row);
+          added++;
+        }
+      });
+      state.gastos.sort((a,b)=> new Date(b.Fecha) - new Date(a.Fecha));
+      save();
+      toast(added+' gastos descargados');
+      renderDashboard();
+    }
+  }catch(e){
+    toast('No se pudo descargar (revisa la URL)');
+  }
+}
+window.addEventListener('online', trySync);
+
+/* ================= TASAS DE CAMBIO AUTOMÁTICAS ================= */
+async function actualizarTasas(manual){
+  try{
+    if(manual) toast('Consultando tasa del día…');
+    const res = await fetch('https://open.er-api.com/v6/latest/EUR');
+    const json = await res.json();
+    if(json.result !== 'success' || !json.rates || !json.rates.COP || !json.rates.USD){
+      throw new Error('respuesta inválida');
+    }
+    state.config.eur_cop = json.rates.COP;
+    state.config.usd_cop = json.rates.COP / json.rates.USD;
+    state.config.rates_updated = new Date().toISOString().slice(0,10);
+    save();
+    if(document.getElementById('view-ajustes').classList.contains('active')) renderAjustes();
+    if(manual) toast('Tasas actualizadas ✓');
+  }catch(e){
+    if(manual) toast('No se pudo consultar (revisa tu conexión)');
+  }
+}
+function tasasNecesitanActualizarse(){
+  const hoy = new Date().toISOString().slice(0,10);
+  return state.config.rates_updated !== hoy;
+}
+
+/* ================= EVENT DELEGATION (evita depender de onclick en línea) ================= */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const value = el.dataset.value;
+  switch(action){
+    case 'goto': goTo(value); break;
+    case 'sync': manualSync(); break;
+    case 'pickCat': pickCat(value); break;
+    case 'pickSub': pickSub(value); break;
+    case 'pickMetodo': pickMetodo(value); break;
+    case 'guardarGasto': guardarGasto(); break;
+    case 'borrarGasto': borrarGasto(value); break;
+    case 'guardarConfig': guardarConfig(); break;
+    case 'agregarCiudad': agregarCiudad(); break;
+    case 'quitarCiudad': quitarCiudad(value); break;
+    case 'forzarPull': forzarPull(); break;
+    case 'actualizarTasas': actualizarTasas(true); break;
+  }
+});
+
+/* ================= INIT ================= */
+load();
+updateCityLine();
+document.getElementById('f_fecha') && (document.getElementById('f_fecha').value = new Date().toISOString().slice(0,10));
+renderDashboard();
+updateSyncPill();
+if(tasasNecesitanActualizarse()) actualizarTasas(false);
+setInterval(trySync, 30000);
+});
+</script>
+</body>
+</html>
