@@ -54,8 +54,9 @@ body{
   border-bottom-right-radius:22px;
 }
 .topbar .eyebrow{
-  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--gold); font-weight:600; margin-bottom:4px;
+  font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--gold); font-weight:600; margin-bottom:6px;
+  line-height:1.6; padding-right:70px;
 }
 .topbar h1{
   font-family:'Fraunces',serif; font-weight:600; font-size:24px; margin:0;
@@ -721,7 +722,7 @@ function quitarCiudad(c){
   renderAjustes();
 }
 function updateCityLine(){
-  document.getElementById('cityLine').textContent = state.ciudades.slice(0,3).join(' · ') + ' · 2026';
+  document.getElementById('cityLine').textContent = state.ciudades.join(' · ') + ' · 2026';
 }
 
 /* ================= SYNC ================= */
